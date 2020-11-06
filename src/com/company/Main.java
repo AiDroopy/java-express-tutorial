@@ -2,6 +2,7 @@ package com.company;
 
 import express.Express;
 import express.middleware.Middleware;
+import org.apache.commons.fileupload.FileItem;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -10,43 +11,45 @@ import java.util.List;
 public class Main {
 
     public static void main(String[] args) {
-
         Express app = new Express();
         Database db = new Database();
 
         // req = Request, res = Response
-        app.get("/hello-world", (req, res) -> {
-            res.send("Hello World");
+        app.get("/rest/posts", (req, res) -> {
+            List<BlogPost> posts = db.getPosts();
+            res.json(posts);
         });
 
-        app.get("/about", (req, res) -> {
-            res.send("This is the about page");
-        });
-
-        app.get("/rest/users", (req, res) -> {
-            List<User> users = db.getUsers();
-
-            res.json(users);
-        });
-
-        app.get("/rest/users/:id", (req, res) -> {
+        app.get("/rest/posts/:id", (req, res) -> {
             int id = Integer.parseInt(req.getParam("id"));
 
-            User user = db.getUserById(id);
-
-            res.json(user);
+            BlogPost post = db.getPostById(id);
+            res.json(post);
         });
 
-        app.post("/rest/users", (req, res) -> {
-            User user = (User) req.getBody(User.class);
+        app.post("/rest/posts", (req, res) -> {
+            BlogPost post = (BlogPost) req.getBody(BlogPost.class);
 
-            System.out.println(user.toString());
-
-            db.createUser(user);
-
+            db.createPost(post);
             res.send("post OK");
         });
 
+        app.post("/api/file-upload", (req, res) -> {
+            String imageUrl = null;
+
+            // extract the file from the FormData
+            try {
+                List<FileItem> files = req.getFormData("files");
+                imageUrl = db.uploadImage(files.get(0));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            // return "/uploads/image-name.jpg
+            res.send(imageUrl);
+        });
+
+        // will serve both the html/css/js files and the uploads folder
         try {
             app.use(Middleware.statics(Paths.get("src/www").toString()));
         } catch (IOException e) {
